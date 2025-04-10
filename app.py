@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+import requests
 from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi
 import google.generativeai as genai
@@ -9,51 +10,204 @@ load_dotenv()
 
 # Configure Google GenerativeAI
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+model = genai.GenerativeModel("gemini-2.0-flash")
 
-# Prompt for summarization
-prompt = """Welcome, Video Summarizer! Your task is to distill the essence of a given YouTube video transcript into a concise summary. Your summary should capture the key points and essential information, presented in bullet points, within a 250-word limit. Let's dive into the provided transcript and extract the vital details for our audience."""
+# Summarization prompt
+summary_prompt = """Welcome, Video Summarizer! Your task is to analyze the provided YouTube video transcript and generate a comprehensive, detailed summary that thoroughly captures the main points, key insights, and supporting details discussed throughout the video. You are encouraged to use important phrases, sentences, or even direct quotes from the transcript if they enhance clarity or accuracy. Present the summary in a well-structured format using bullet points for clarity. Focus on preserving the original tone and depth of the content. Do not limit the word count — prioritize completeness and context."""
 
-
-# Function to extract transcript details from a YouTube video URL
+# Get transcript from YouTube
 def extract_transcript_details(youtube_video_url):
-    try:
-        video_id = youtube_video_url.split("=")[1]
-        transcript_text = YouTubeTranscriptApi.get_transcript(video_id)
+    video_id = youtube_video_url.split("v=")[1].split("&")[0]
+    transcript_text = YouTubeTranscriptApi.get_transcript(video_id, languages=["hi", "en"])
+    transcript = " ".join([i["text"] for i in transcript_text])
+    return transcript, video_id
 
-        transcript = ""
-        for i in transcript_text:
-            transcript += " " + i["text"]
+# Load from SRT
+def extract_transcript_from_srt(uploaded_file):
+    content = uploaded_file.read().decode("utf-8")
+    import re
+    lines = re.findall(r"(\d+\n)?(\d{2}:\d{2}:\d{2},\d{3} --> .+\n)?(.+)", content)
+    transcript = " ".join([line[2] for line in lines if line[2]])
+    return transcript
 
-        return transcript
-    except Exception as e:
-        raise e
-
-
-# Function to generate summary using Google Gemini Pro
-def generate_gemini_content(transcript_text, prompt):
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt + transcript_text)
+# Gemini Summary
+def generate_summary(transcript):
+    response = model.generate_content(summary_prompt + transcript)
     return response.text
 
+# Search
+def search_transcript(transcript, keyword):
+    return [line for line in transcript.split(". ") if keyword.lower() in line.lower()]
 
-# Streamlit UI
-st.title(
-    "Gemini YouTube Transcript Summarizer: Extract Key Insights from YouTube Videos"
+# Q&A
+def ask_question(transcript, question):
+    qna_prompt = f"Use this transcript to answer the question: {question}\n\nTranscript: {transcript}\nAnswer:"
+    response = model.generate_content(qna_prompt)
+    return response.text
+
+# Quiz
+def generate_quiz(transcript):
+    quiz_prompt = """Create 3 multiple-choice questions based on this transcript with 4 options each. Mention the correct answer.
+Format:
+Q1. ...
+a) ...
+b) ...
+c) ...
+d) ...
+Correct Answer: ...
+"""
+    response = model.generate_content(quiz_prompt + transcript)
+    return response.text
+
+# Get video metadata
+def get_video_info(video_id):
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video_id}&key={api_key}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        items = response.json().get("items")
+        if items:
+            snippet = items[0]["snippet"]
+            return snippet["title"], snippet["thumbnails"]["high"]["url"]
+    return "Untitled Video", f"http://img.youtube.com/vi/{video_id}/0.jpg"
+
+# --- Streamlit UI ---
+st.set_page_config(page_title="YouTube Transcript Summarizer", layout="wide")
+
+# Title with actual YouTube icon
+st.markdown(
+    """
+    <h1 style="display: flex; align-items: center;">
+        <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" alt="YouTube" width="40" style="margin-right: 10px;">
+        YouTube Transcript Summarizer
+    </h1>
+    """,
+    unsafe_allow_html=True
 )
-youtube_link = st.text_input("Enter YouTube Video Link:")
 
-if youtube_link:
-    video_id = youtube_link.split("=")[1]
-    st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_column_width=True)
+# Session State Setup
+if "transcript" not in st.session_state:
+    st.session_state.transcript = ""
+if "video_title" not in st.session_state:
+    st.session_state.video_title = ""
+if "video_thumbnail" not in st.session_state:
+    st.session_state.video_thumbnail = ""
 
-# Button to trigger summary generation
-if st.button("Get Detailed Notes"):
-    transcript_text = extract_transcript_details(youtube_link)
+# --- Tabs ---
+tabs = st.tabs(["📋 Summary", "🔍 Search", "🤖 Q&A", "🧠 Quiz"])
 
-    if transcript_text:
-        # Generate summary using Gemini Pro
-        summary = generate_gemini_content(transcript_text, prompt)
+# 📋 SUMMARY TAB
+with tabs[0]:
+    st.subheader("Extract Transcript and Generate Summary")
 
-        # Display summary
-        st.markdown("## Detailed Notes:")
-        st.write(summary)
+    youtube_link = st.text_input("Enter YouTube Video Link:")
+    uploaded_file = st.file_uploader("Or upload a transcript (.srt) file", type=["srt"])
+
+    if youtube_link:
+        try:
+            transcript, video_id = extract_transcript_details(youtube_link)
+            st.session_state.transcript = transcript
+            video_title, thumbnail_url = get_video_info(video_id)
+            st.session_state.video_title = video_title
+            st.session_state.video_thumbnail = thumbnail_url
+            st.image(thumbnail_url, use_container_width=True)
+            st.markdown(f"### 📌 {video_title}")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+    elif uploaded_file:
+        transcript = extract_transcript_from_srt(uploaded_file)
+        st.session_state.transcript = transcript
+        st.success("Transcript loaded from .srt file.")
+
+    if st.button("Generate Summary"):
+        if st.session_state.transcript:
+            summary = generate_summary(st.session_state.transcript)
+            st.markdown("## 📝 Detailed Notes:")
+            st.write(summary)
+
+            st.download_button("📥 Download Notes", summary, "summary.md", mime="text/markdown")
+        else:
+            st.warning("Please provide a YouTube link or upload an .srt file.")
+
+# 🔍 SEARCH TAB
+with tabs[1]:
+    st.subheader("Search Specific Keywords in Transcript")
+    keyword = st.text_input("Enter keyword or phrase to search:")
+    if keyword and st.session_state.transcript:
+        results = search_transcript(st.session_state.transcript, keyword)
+        if results:
+            st.success(f"Found {len(results)} results:")
+            for i, res in enumerate(results, 1):
+                st.markdown(f"**{i}.** {res}")
+        else:
+            st.warning("No matches found.")
+
+# 🤖 Q&A TAB
+with tabs[2]:
+    st.subheader("Ask Questions About the Transcript")
+    if st.session_state.transcript:
+        question = st.text_input("Ask a question:")
+        if question:
+            with st.spinner("Thinking..."):
+                answer = ask_question(st.session_state.transcript, question)
+                st.markdown("### 🤖 Answer")
+                st.write(answer)
+    else:
+        st.warning("Transcript not loaded. Please use the Summary tab.")
+
+# 🧠 QUIZ TAB
+with tabs[3]:
+    st.subheader("Generate and Take Quiz from Transcript")
+
+    if st.session_state.transcript:
+
+        if "quiz_data" not in st.session_state:
+            st.session_state.quiz_data = []
+
+        def parse_quiz(raw_text):
+            questions = []
+            blocks = raw_text.strip().split("Q")
+            for block in blocks:
+                if block.strip():
+                    lines = block.strip().split("\n")
+                    q_line = lines[0].strip()
+                    q_text = f"Q{q_line}" if not q_line.startswith("Q") else q_line
+                    options = [l.strip() for l in lines[1:5] if l.strip() and ")" in l]
+                    while len(options) < 4:  # Ensure 4 options
+                        options.append(f"Option {len(options)+1}) Placeholder")
+                    correct_line = [l for l in lines if "Correct Answer" in l]
+                    correct = correct_line[0].split(":")[1].strip() if correct_line else ""
+                    questions.append({
+                        "question": q_text,
+                        "options": options,
+                        "answer": correct
+                    })
+            return questions
+
+        if st.button("Generate Quiz"):
+            with st.spinner("Creating quiz..."):
+                raw_quiz = generate_quiz(st.session_state.transcript)
+                st.session_state.quiz_data = parse_quiz(raw_quiz)
+
+        if st.session_state.quiz_data:
+            st.markdown("### 🧠 Take the Quiz")
+
+            for i, q in enumerate(st.session_state.quiz_data):
+                st.markdown(f"**{q['question']}**")
+
+                selected = st.radio(
+                    label=f"Choose your answer for {q['question']}",
+                    options=[""] + q["options"],  # Add blank default to keep unselected
+                    key=f"quiz_q_{i}"
+                )
+
+                if selected and selected != "":
+                    if selected.startswith(q["answer"]):
+                        st.success("✅ Correct!")
+                    else:
+                        st.error(f"❌ Incorrect. **Correct Answer:** {q['answer']}")
+                st.markdown("---")
+
+    else:
+        st.warning("Transcript not loaded. Please use the Summary tab.")
