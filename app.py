@@ -1,4 +1,4 @@
-import os
+import os , re
 import streamlit as st
 import requests
 from dotenv import load_dotenv
@@ -35,9 +35,19 @@ def generate_summary(transcript):
     response = model.generate_content(summary_prompt + transcript)
     return response.text
 
-# Search
+# 🔍 Better Search Function
 def search_transcript(transcript, keyword):
-    return [line for line in transcript.split(". ") if keyword.lower() in line.lower()]
+    sentences = re.split(r'(?<=[.?!])\s+', transcript)  # split into sentences
+    keyword_pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+    results = []
+
+    for sent in sentences:
+        if keyword_pattern.search(sent):
+            sent_clean = sent.strip()
+            if sent_clean not in results:
+                results.append(sent_clean)
+
+    return results
 
 # Q&A
 def ask_question(transcript, question):
@@ -47,14 +57,27 @@ def ask_question(transcript, question):
 
 # Quiz
 def generate_quiz(transcript):
-    quiz_prompt = """Create 3 multiple-choice questions based on this transcript with 4 options each. Mention the correct answer.
+    quiz_prompt = """You are a quiz generator. Create exactly 3 multiple-choice questions based on the transcript below. Each question must test understanding of the content — including facts, concepts, or insights from different parts of the transcript.
+
+Guidelines:
+- Each question must have **4 unique, clearly different options**, labeled **a)** to **d)**.
+- Only **one correct answer** per question.
+- **Do NOT include the correct answer inside any of the options**.
+- **Number the questions correctly as Q1., Q2., Q3.**
+- Format exactly as shown below.
+
 Format:
-Q1. ...
-a) ...
-b) ...
-c) ...
-d) ...
-Correct Answer: ...
+Q1. Question text here
+a) Option 1  
+b) Option 2  
+c) Option 3  
+d) Option 4  
+Correct Answer: a)
+
+Q2. Question text here
+...
+
+Use only the format above. Do not add any commentary or explanation. Begin below:
 """
     response = model.generate_content(quiz_prompt + transcript)
     return response.text
@@ -72,14 +95,15 @@ def get_video_info(video_id):
     return "Untitled Video", f"http://img.youtube.com/vi/{video_id}/0.jpg"
 
 # --- Streamlit UI ---
-st.set_page_config(page_title="YouTube Transcript Summarizer", layout="wide")
+st.set_page_config(page_title="Dynamic Generation Pipeline")
+
 
 # Title with actual YouTube icon
 st.markdown(
     """
     <h1 style="display: flex; align-items: center;">
         <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" alt="YouTube" width="40" style="margin-right: 10px;">
-        YouTube Transcript Summarizer
+        Dynamic Generation Pipeline
     </h1>
     """,
     unsafe_allow_html=True
@@ -133,13 +157,18 @@ with tabs[0]:
 # 🔍 SEARCH TAB
 with tabs[1]:
     st.subheader("Search Specific Keywords in Transcript")
+
     keyword = st.text_input("Enter keyword or phrase to search:")
+
     if keyword and st.session_state.transcript:
         results = search_transcript(st.session_state.transcript, keyword)
+
         if results:
-            st.success(f"Found {len(results)} results:")
+            st.success(f"Found {len(results)} result(s):")
             for i, res in enumerate(results, 1):
-                st.markdown(f"**{i}.** {res}")
+                # Highlight keyword
+                highlighted = re.sub(f"(?i)({re.escape(keyword)})", r"**\1**", res)
+                st.markdown(f"**{i}.** {highlighted}")
         else:
             st.warning("No matches found.")
 
@@ -196,13 +225,15 @@ with tabs[3]:
             for i, q in enumerate(st.session_state.quiz_data):
                 st.markdown(f"**{q['question']}**")
 
+                # Display radio with no default selection
                 selected = st.radio(
                     label=f"Choose your answer for {q['question']}",
-                    options=[""] + q["options"],  # Add blank default to keep unselected
+                    options=q["options"],
+                    index=None,
                     key=f"quiz_q_{i}"
                 )
 
-                if selected and selected != "":
+                if selected:
                     if selected.startswith(q["answer"]):
                         st.success("✅ Correct!")
                     else:
