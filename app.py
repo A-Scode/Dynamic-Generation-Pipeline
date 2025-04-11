@@ -12,6 +12,9 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel("gemini-2.0-flash")
 
+
+
+
 # Summarization prompt
 summary_prompt = """Welcome, Video Summarizer! Your task is to analyze the provided YouTube video transcript and generate a comprehensive, detailed summary that thoroughly captures the main points, key insights, and supporting details discussed throughout the video. You are encouraged to use important phrases, sentences, or even direct quotes from the transcript if they enhance clarity or accuracy. Present the summary in a well-structured format using bullet points for clarity. Focus on preserving the original tone and depth of the content. Do not limit the word count — prioritize completeness and context."""
 
@@ -96,6 +99,7 @@ def get_video_info(video_id):
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="Dynamic Generation Pipeline")
+
 
 
 # Title with actual YouTube icon

@@ -1,0 +1,214 @@
+/* ===== Dark Mode Color Palette ===== */
+:root {
+    --primary: #FF6B6B;
+    --primary-dark: #FF4757;
+    --secondary: #E2E8F0;
+    --accent: #A0AEC0;
+    --light: #1A202C;
+    --dark: #0D1117;
+    --success: #68D391;
+    --warning: #F6E05E;
+    --danger: #FC8181;
+    --info: #63B3ED;
+    --highlight: #4A5568;
+    --card-bg: #2D3748;
+    --text-primary: #F7FAFC;
+    --text-secondary: #CBD5E0;
+    --tab-active: rgba(255, 107, 107, 0.2);
+  }
+  
+  /* ===== Base Responsive Styles ===== */
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+  }
+  
+  .stApp {
+    background-color: var(--dark);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  
+  /* ===== YouTube Icon - Responsive ===== */
+  .youtube-icon {
+    width: clamp(36px, 8vw, 44px); /* Responsive sizing */
+    height: clamp(36px, 8vw, 44px);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: transform 0.3s ease;
+  }
+  
+  .youtube-icon:hover {
+    transform: scale(1.1);
+  }
+  
+  /* ===== Enhanced Tab Styling - Responsive ===== */
+  .stTabs [role="tablist"] {
+    background: transparent !important;
+    gap: 0.25rem;
+    margin-bottom: 1.5rem;
+    padding: 0.25rem;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+    overflow-x: auto; /* For mobile scrolling */
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .stTabs [role="tab"] {
+    padding: 0.5rem 1rem;
+    border-radius: 8px !important;
+    font-weight: 500;
+    color: var(--accent) !important;
+    background: rgba(45, 55, 72, 0.7) !important;
+    border: none !important;
+    transition: all 0.3s ease;
+    margin: 0 0.1rem !important;
+    position: relative;
+    overflow: hidden;
+    font-size: clamp(0.8rem, 3vw, 1rem); /* Responsive font */
+    white-space: nowrap;
+  }
+  
+  .stTabs [role="tab"][aria-selected="true"] {
+    background: var(--tab-active) !important;
+    color: var(--primary) !important;
+    font-weight: 600;
+    box-shadow: 0 0 0 1px var(--primary);
+  }
+  
+  .stTabs [role="tab"][aria-selected="true"]::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 3px 3px 0 0;
+  }
+  
+  /* ===== Header - Responsive ===== */
+  .header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 1rem clamp(1rem, 5vw, 2rem);
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.75rem, 3vw, 1.25rem);
+    max-width: 1200px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+  }
+  
+  .header h1 {
+    margin: 0;
+    font-size: clamp(1.5rem, 6vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  
+  .subtitle {
+    margin: 0.15rem 0 0;
+    opacity: 0.9;
+    font-size: clamp(0.8rem, 3vw, 0.95rem);
+    font-weight: 400;
+  }
+  
+  /* ===== Card Styles - Responsive ===== */
+  .card, 
+  .video-info,
+  .summary-box,
+  .answer-box,
+  [data-testid="stExpander"] {
+    background: var(--card-bg);
+    color: var(--text-primary);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: clamp(1rem, 3vw, 1.75rem);
+    margin-bottom: clamp(1rem, 3vw, 1.5rem);
+  }
+  
+  /* ===== Search Results - Responsive ===== */
+  .search-result {
+    display: flex;
+    gap: 0.5rem;
+    padding: clamp(0.75rem, 3vw, 1.25rem);
+    background: var(--card-bg);
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  /* ===== Button Styles - Responsive ===== */
+  .stButton>button {
+    padding: clamp(0.5rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem);
+    font-size: clamp(0.9rem, 3vw, 1rem);
+  }
+  
+  /* ===== Mobile-Specific Adjustments ===== */
+  @media (max-width: 768px) {
+    .header-content {
+      flex-direction: column;
+      text-align: center;
+      gap: 0.5rem;
+    }
+    
+    .stTabs [role="tablist"] {
+      gap: 0.1rem;
+      padding: 0.1rem;
+    }
+    
+    .stTabs [role="tab"] {
+      padding: 0.4rem 0.8rem;
+      margin: 0 0.05rem !important;
+    }
+    
+    [data-testid="stVerticalBlock"] {
+      gap: 0.75rem !important;
+    }
+    
+    .stTextInput>div>div>input {
+      font-size: 1rem !important; /* Larger text for mobile inputs */
+    }
+  }
+  
+  /* ===== Tablet Adjustments ===== */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .header h1 {
+      font-size: 1.75rem;
+    }
+    
+    .stTabs [role="tab"] {
+      padding: 0.6rem 1.2rem;
+    }
+  }
+  
+  /* ===== Animation and Interaction ===== */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+  
+  /* ===== Scrollbar ===== */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+  }
